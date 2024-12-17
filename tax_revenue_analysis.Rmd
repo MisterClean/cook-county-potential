@@ -134,7 +134,13 @@ lakeview_results <- lakeview_mixed %>%
 # Create detailed table
 lakeview_results %>%
   select(property_type, units, value_per_unit, total_value, tax_revenue, revenue_per_unit) %>%
-  mutate(across(where(is.numeric), ~ format_currency(.))) %>%
+  mutate(
+    units = format_number(units),  # Format units as numbers without $ sign
+    value_per_unit = format_currency(value_per_unit),
+    total_value = format_currency(total_value),
+    tax_revenue = format_currency(tax_revenue),
+    revenue_per_unit = format_currency(revenue_per_unit)
+  ) %>%
   arrange(desc(tax_revenue)) %>%
   kable(col.names = c("Property Type", "Units", "Value per Unit", "Total Value", 
                       "Annual Tax Revenue", "Revenue per Unit"),

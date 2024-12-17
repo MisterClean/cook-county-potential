@@ -735,12 +735,18 @@ diverse needs while generating substantial tax revenue.</p>
 <span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co"># Create detailed table</span></span>
 <span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>lakeview_results <span class="sc">%&gt;%</span></span>
 <span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>  <span class="fu">select</span>(property_type, units, value_per_unit, total_value, tax_revenue, revenue_per_unit) <span class="sc">%&gt;%</span></span>
-<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">where</span>(is.numeric), <span class="sc">~</span> <span class="fu">format_currency</span>(.))) <span class="sc">%&gt;%</span></span>
-<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(tax_revenue)) <span class="sc">%&gt;%</span></span>
-<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Property Type&quot;</span>, <span class="st">&quot;Units&quot;</span>, <span class="st">&quot;Value per Unit&quot;</span>, <span class="st">&quot;Total Value&quot;</span>, </span>
-<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>                      <span class="st">&quot;Annual Tax Revenue&quot;</span>, <span class="st">&quot;Revenue per Unit&quot;</span>),</span>
-<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>        <span class="at">caption =</span> <span class="st">&quot;Lake View Township Mixed Housing Development - 3,500 Total Units&quot;</span>,</span>
-<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>        <span class="at">align =</span> <span class="fu">c</span>(<span class="st">&quot;l&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>))</span></code></pre></div>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a>    <span class="at">units =</span> <span class="fu">format_number</span>(units),  <span class="co"># Format units as numbers without $ sign</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a>    <span class="at">value_per_unit =</span> <span class="fu">format_currency</span>(value_per_unit),</span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>    <span class="at">total_value =</span> <span class="fu">format_currency</span>(total_value),</span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>    <span class="at">tax_revenue =</span> <span class="fu">format_currency</span>(tax_revenue),</span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>    <span class="at">revenue_per_unit =</span> <span class="fu">format_currency</span>(revenue_per_unit)</span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(tax_revenue)) <span class="sc">%&gt;%</span></span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Property Type&quot;</span>, <span class="st">&quot;Units&quot;</span>, <span class="st">&quot;Value per Unit&quot;</span>, <span class="st">&quot;Total Value&quot;</span>, </span>
+<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a>                      <span class="st">&quot;Annual Tax Revenue&quot;</span>, <span class="st">&quot;Revenue per Unit&quot;</span>),</span>
+<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a>        <span class="at">caption =</span> <span class="st">&quot;Lake View Township Mixed Housing Development - 3,500 Total Units&quot;</span>,</span>
+<span id="cb2-35"><a href="#cb2-35" tabindex="-1"></a>        <span class="at">align =</span> <span class="fu">c</span>(<span class="st">&quot;l&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>))</span></code></pre></div>
 <table>
 <thead>
 <tr>
@@ -755,7 +761,7 @@ diverse needs while generating substantial tax revenue.</p>
 <tbody>
 <tr>
 <td align="left">Large Multi-Family</td>
-<td align="right">$1,000</td>
+<td align="right">1,000</td>
 <td align="right">$400,000</td>
 <td align="right">$400,000,000</td>
 <td align="right">$8,000,000</td>
@@ -763,7 +769,7 @@ diverse needs while generating substantial tax revenue.</p>
 </tr>
 <tr>
 <td align="left">Condo</td>
-<td align="right">$500</td>
+<td align="right">500</td>
 <td align="right">$575,000</td>
 <td align="right">$287,500,000</td>
 <td align="right">$5,750,000</td>
@@ -771,7 +777,7 @@ diverse needs while generating substantial tax revenue.</p>
 </tr>
 <tr>
 <td align="left">Small Multi-Family</td>
-<td align="right">$2,000</td>
+<td align="right">2,000</td>
 <td align="right">$312,500</td>
 <td align="right">$625,000,000</td>
 <td align="right">$12,500,000</td>

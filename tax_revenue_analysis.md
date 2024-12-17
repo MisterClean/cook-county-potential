@@ -108,7 +108,13 @@ lakeview_results <- lakeview_mixed %>%
 # Create detailed table
 lakeview_results %>%
   select(property_type, units, value_per_unit, total_value, tax_revenue, revenue_per_unit) %>%
-  mutate(across(where(is.numeric), ~ format_currency(.))) %>%
+  mutate(
+    units = format_number(units),  # Format units as numbers without $ sign
+    value_per_unit = format_currency(value_per_unit),
+    total_value = format_currency(total_value),
+    tax_revenue = format_currency(tax_revenue),
+    revenue_per_unit = format_currency(revenue_per_unit)
+  ) %>%
   arrange(desc(tax_revenue)) %>%
   kable(col.names = c("Property Type", "Units", "Value per Unit", "Total Value", 
                       "Annual Tax Revenue", "Revenue per Unit"),
@@ -118,9 +124,9 @@ lakeview_results %>%
 
 | Property Type | Units | Value per Unit | Total Value | Annual Tax Revenue | Revenue per Unit |
 |:---|---:|---:|---:|---:|---:|
-| Large Multi-Family | \$1,000 | \$400,000 | \$400,000,000 | \$8,000,000 | \$8,000 |
-| Condo | \$500 | \$575,000 | \$287,500,000 | \$5,750,000 | \$11,500 |
-| Small Multi-Family | \$2,000 | \$312,500 | \$625,000,000 | \$12,500,000 | \$6,250 |
+| Large Multi-Family | 1,000 | \$400,000 | \$400,000,000 | \$8,000,000 | \$8,000 |
+| Condo | 500 | \$575,000 | \$287,500,000 | \$5,750,000 | \$11,500 |
+| Small Multi-Family | 2,000 | \$312,500 | \$625,000,000 | \$12,500,000 | \$6,250 |
 
 Lake View Township Mixed Housing Development - 3,500 Total Units
 
