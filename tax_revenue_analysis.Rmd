@@ -1,13 +1,7 @@
 title: "Cook County Property Tax Revenue Analysis - Multi-Unit Focus"
 author: "Cook County Potential"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-output: 
-  github_document:
-    toc: true
-    toc_depth: 3
-    fig_width: 10
-    fig_height: 6
-always_allow_html: true
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -18,13 +12,11 @@ if (!require("tidyverse")) install.packages("tidyverse")
 if (!require("knitr")) install.packages("knitr")
 if (!require("scales")) install.packages("scales")
 if (!require("ggplot2")) install.packages("ggplot2")
-if (!require("kableExtra")) install.packages("kableExtra")
 
 library(tidyverse)
 library(knitr)
 library(scales)
 library(ggplot2)
-library(kableExtra)
 
 # Helper functions for formatting
 format_currency <- function(x) {
@@ -41,38 +33,6 @@ format_percent <- function(x) {
 
 # Modern color palette
 modern_palette <- c("#2E86AB", "#A23B72", "#F18F01")
-
-# Simple table styling
-style_table <- function(kable_output) {
-  styled <- kable_styling(kable_output,
-    bootstrap_options = c("striped", "hover", "condensed", "bordered"),
-    full_width = FALSE,
-    position = "left",
-    font_size = 12
-  ) %>%
-    row_spec(0, bold = TRUE, color = "white", background = "#2E86AB")
-  
-  # Get the data from the kable object
-  if (!is.null(attr(kable_output, "data"))) {
-    data <- attr(kable_output, "data")
-    
-    # Find rows with SUBTOTAL
-    subtotal_rows <- which(apply(data, 1, function(x) any(grepl("SUBTOTAL", x))))
-    if (length(subtotal_rows) > 0) {
-      styled <- styled %>% 
-        row_spec(subtotal_rows, bold = TRUE, background = "#f0f0f0")
-    }
-    
-    # Find rows with GRAND TOTAL
-    total_rows <- which(apply(data, 1, function(x) any(grepl("GRAND TOTAL", x))))
-    if (length(total_rows) > 0) {
-      styled <- styled %>%
-        row_spec(total_rows, bold = TRUE, color = "white", background = "#333333")
-    }
-  }
-  
-  return(styled)
-}
 
 # Helper function to simplify property types
 simplify_property_type <- function(type) {
@@ -131,20 +91,19 @@ detailed_summary <- summary_data %>%
   ) %>%
   mutate(property_type = simplify_property_type(property_type))
 
-# Create summary table with enhanced styling
-kable(detailed_summary %>%
+# Create summary table
+detailed_summary %>%
   mutate(
     avg_tax = format_currency(avg_tax),
     median_tax = format_currency(median_tax),
     avg_value = format_currency(avg_value),
     median_value = format_currency(median_value),
     effective_tax_rate = format_percent(effective_tax_rate)
-  ),
-  col.names = c("Property Type", "Avg Tax/Unit", "Median Tax/Unit", 
-                "Avg Value/Unit", "Median Value/Unit", "Effective Tax Rate"),
-  caption = "2022 Property Tax and Value Summary by Housing Type",
-  align = c("l", "r", "r", "r", "r", "r")
-) %>% style_table()
+  ) %>%
+  kable(col.names = c("Property Type", "Avg Tax/Unit", "Median Tax/Unit", 
+                      "Avg Value/Unit", "Median Value/Unit", "Effective Tax Rate"),
+        caption = "2022 Property Tax and Value Summary by Housing Type",
+        align = c("l", "r", "r", "r", "r", "r"))
 ```
 
 ### Lake View Township Mixed Housing Development Scenario
@@ -173,14 +132,14 @@ lakeview_results <- lakeview_mixed %>%
   )
 
 # Create detailed table
-kable(lakeview_results %>%
+lakeview_results %>%
   select(property_type, units, value_per_unit, total_value, tax_revenue, revenue_per_unit) %>%
   mutate(across(where(is.numeric), ~ format_currency(.))) %>%
-  arrange(desc(tax_revenue)),
-  col.names = c("Property Type", "Units", "Value per Unit", "Total Value", 
-                "Annual Tax Revenue", "Revenue per Unit"),
-  caption = "Lake View Township Mixed Housing Development - 3,500 Total Units"
-) %>% style_table()
+  arrange(desc(tax_revenue)) %>%
+  kable(col.names = c("Property Type", "Units", "Value per Unit", "Total Value", 
+                      "Annual Tax Revenue", "Revenue per Unit"),
+        caption = "Lake View Township Mixed Housing Development - 3,500 Total Units",
+        align = c("l", "r", "r", "r", "r", "r"))
 
 # Create visualization
 ggplot(lakeview_results, 
