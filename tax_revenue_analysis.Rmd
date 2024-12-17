@@ -44,17 +44,18 @@ modern_palette <- c("#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#3B1F2B")
 
 ## Introduction
 
-This analysis explores the potential property tax revenue that could be generated through new housing development in Cook County, with a focus on Chicago townships. Using actual property tax data from 2021-2022, we model various scenarios for housing development and their impact on tax revenue.
+This analysis explores the potential property tax revenue that could be generated through new housing development in Cook County, with a focus on Chicago townships. Using actual property tax data from 2021-2022 and current market values for new construction, we model various scenarios for housing development and their impact on tax revenue.
 
 ## Current Property Tax Landscape
 
-First, let's examine the current property tax situation across different housing types and locations.
+First, let's examine the current property tax situation across different housing types and locations, which will serve as our baseline before applying new construction values.
 
 ```{r load_data}
 # Load the data
 summary_data <- read.csv("property_tax_summary.csv")
 bedroom_data <- read.csv("property_tax_by_bedroom.csv")
 township_data <- read.csv("property_tax_by_township.csv")
+new_construction_rates <- read.csv("new_construction_tax_rates.csv")
 
 # Filter for most recent year (2022)
 current_summary <- summary_data %>%
@@ -73,12 +74,12 @@ kable(current_summary %>%
     effective_tax_rate = format_percent(effective_tax_rate)
   ),
   col.names = c("Property Type", "Avg Tax/Unit", "Avg Value/Unit", "Effective Tax Rate"),
-  caption = "2022 Property Tax Summary by Housing Type")
+  caption = "2022 Property Tax Summary by Housing Type (Existing Housing Stock)")
 ```
 
 ### Geographic Distribution
 
-Let's examine how property taxes vary across Chicago townships.
+Let's examine how property taxes vary across Chicago townships. This geographic analysis helps identify areas where new construction could generate the highest tax revenue.
 
 ```{r township_analysis, fig.height=8}
 # Create township visualization with improved styling
@@ -99,7 +100,7 @@ township_plot <- township_data %>%
   scale_fill_manual(values = modern_palette) +
   labs(
     title = "Average Property Tax per Unit by Township and Property Type (2022)",
-    subtitle = "Data labels show average tax amount per unit",
+    subtitle = "Data labels show average tax amount per unit for existing housing stock",
     x = "Township",
     y = "Average Tax per Unit",
     fill = "Property Type"
@@ -119,7 +120,7 @@ township_plot
 
 ### Unit Size Analysis
 
-Different unit sizes have varying tax implications:
+Different unit sizes have varying tax implications. This analysis of existing housing stock provides context for our new construction scenarios:
 
 ```{r bedroom_analysis, fig.height=7}
 # Create bedroom analysis visualization with improved styling
@@ -139,7 +140,7 @@ bedroom_plot <- bedroom_data %>%
   scale_fill_manual(values = modern_palette) +
   labs(
     title = "Average Property Tax by Unit Size and Property Type (2022)",
-    subtitle = "Data labels show average tax amount per unit",
+    subtitle = "Data labels show average tax amount per unit for existing housing stock",
     x = "Unit Type",
     y = "Average Tax per Unit",
     fill = "Property Type"
@@ -161,75 +162,158 @@ bedroom_plot <- bedroom_data %>%
 bedroom_plot
 ```
 
+## New Construction Market Analysis
+
+Before presenting development scenarios, let's analyze how new construction values compare to existing housing stock:
+
+```{r new_construction_analysis}
+# Create comparison of existing vs new construction values
+value_comparison <- new_construction_rates %>%
+  select(property_type, bedroom_type, avg_value_per_unit, new_construction_value, 
+         avg_tax_per_unit, new_construction_tax) %>%
+  group_by(property_type) %>%
+  summarize(
+    avg_existing_value = mean(avg_value_per_unit, na.rm = TRUE),
+    avg_new_value = mean(new_construction_value, na.rm = TRUE),
+    avg_existing_tax = mean(avg_tax_per_unit, na.rm = TRUE),
+    avg_new_tax = mean(new_construction_tax, na.rm = TRUE),
+    value_premium = (mean(new_construction_value, na.rm = TRUE) / 
+                    mean(avg_value_per_unit, na.rm = TRUE) - 1) * 100
+  )
+
+# Display value comparison table
+kable(value_comparison %>%
+  mutate(
+    avg_existing_value = format_currency(avg_existing_value),
+    avg_new_value = format_currency(avg_new_value),
+    avg_existing_tax = format_currency(avg_existing_tax),
+    avg_new_tax = format_currency(avg_new_tax),
+    value_premium = format_percent(value_premium/100)
+  ),
+  col.names = c("Property Type", "Existing Value", "New Construction Value", 
+                "Existing Tax", "New Construction Tax", "Value Premium"),
+  caption = "New Construction Value and Tax Premium by Property Type")
+
+# Create visualization of new construction premiums
+premium_plot <- value_comparison %>%
+  ggplot(aes(x = reorder(property_type, value_premium), 
+             y = value_premium,
+             fill = property_type)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = format_percent(value_premium/100)),
+            vjust = -0.5,
+            size = 3) +
+  scale_y_continuous(labels = scales::percent_format(),
+                    expand = expansion(mult = c(0, 0.2))) +
+  scale_fill_manual(values = modern_palette) +
+  labs(
+    title = "New Construction Value Premium by Property Type",
+    subtitle = "Percentage increase in property value for new construction vs. existing stock",
+    x = "Property Type",
+    y = "Value Premium"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 10, color = "gray50"),
+    axis.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    panel.grid.major.x = element_blank()
+  )
+
+premium_plot
+
+# Create detailed value breakdown by bedroom type
+value_breakdown <- new_construction_rates %>%
+  select(property_type, bedroom_type, avg_value_per_unit, new_construction_value) %>%
+  mutate(
+    bedroom_type = gsub("_", " ", str_to_title(bedroom_type))
+  ) %>%
+  arrange(property_type, bedroom_type)
+
+# Display detailed value breakdown
+kable(value_breakdown %>%
+  mutate(
+    avg_value_per_unit = format_currency(avg_value_per_unit),
+    new_construction_value = format_currency(new_construction_value)
+  ),
+  col.names = c("Property Type", "Unit Size", "Existing Value", "New Construction Value"),
+  caption = "Detailed Value Comparison by Property Type and Unit Size")
+```
+
+### Current Market Values
+
+New construction in Chicago commands significant premiums, with values varying by location and property type:
+
+**Single Family Homes**:
+- Entry-level new construction: $450,000 (affordable areas)
+- Median new construction: $700,000
+- Premium neighborhoods: $1,500,000+ (Lincoln Park/Lakeview)
+
+**Condominiums**:
+- Mid-rise neighborhood developments: $525,000
+- Median new construction: $575,000
+- Luxury high-rise units: $700,000+
+
+**Multi-Family Developments**:
+- Mid-market developments: $275,000-350,000 per unit
+- Luxury developments: $400,000+ per unit
+- Focus on larger (20+ unit) buildings
+
 ## Development Scenarios
 
-Let's model different scenarios for new housing development and their potential tax revenue impact. Each scenario is carefully designed based on different development priorities and market conditions:
+Based on these market values, we model three development scenarios that reflect current construction patterns:
 
-### 1. Balanced Growth Scenario
-This scenario aims to provide a diverse mix of housing types while maintaining neighborhood character:
-- **1,000 1-bed condos**: Entry-level housing for young professionals and small households
-- **1,000 2-bed condos**: Family-friendly units in medium-density areas
-- **500 single-family homes**: Preserving some traditional housing stock
-- **2,000 large multi-family units**: Mix of studio to 3-bed units in larger developments
-- **1,500 small multi-family units**: 2-6 unit buildings spread throughout neighborhoods
+### 1. Premium Transit-Oriented Development Scenario
+This scenario focuses on high-end development near transit:
+- **1,000 luxury condos**: Mix of high-rise ($700k+) and mid-rise ($575k) units
+- **2,500 luxury apartment units**: $400k+ per unit in amenity-rich buildings
+- **100 premium single-family homes**: $1.5M+ in prime locations
 
-*Rationale*: This mix provides housing options across all income levels and household sizes while maintaining a balance between density and neighborhood character. The larger proportion of multi-family units (3,500 total) reflects the need for density, while the equal split between 1-bed and 2-bed condos (2,000 total) caters to both singles and small families.
+### 2. Mixed-Market Development Scenario
+Provides some market diversity while reflecting new construction economics:
+- **800 mid-rise condos**: $525k neighborhood developments
+- **400 luxury condos**: $700k+ units
+- **2,500 luxury apartment units**: $400k+ per unit
+- **200 median single-family homes**: $700k new construction
 
-### 2. Transit-Oriented Development (TOD) Scenario
-Focused on high-density development near transit hubs:
-- **2,000 1-bed condos**: Higher concentration of smaller units near transit
-- **1,500 2-bed condos**: Family units with good transit access
-- **3,000 large multi-family units**: Major developments near transit stations
-- **1,000 small multi-family units**: Moderate density in transit corridors
-- **200 single-family homes**: Limited to areas farther from transit
-
-*Rationale*: This scenario prioritizes density near transit with 75% of units (6,500) being multi-family or condo. The higher number of 1-bed condos (2,000) versus 2-bed (1,500) reflects typical TOD resident demographics. The reduced single-family component (200 units) emphasizes the transit-oriented nature of the development.
-
-### 3. Affordable Housing Focus Scenario
-Prioritizes accessible housing options across different household sizes:
-- **1,500 1-bed condos**: Affordable entry-level housing
-- **500 2-bed condos**: Family-sized units at moderate price points
-- **4,000 large multi-family units**: Maximum density for affordability
-- **2,000 small multi-family units**: Distributed affordable housing
-- **100 single-family homes**: Minimal single-family development
-
-*Rationale*: This scenario maximizes affordable units through higher density, with 6,000 multi-family units (75% of total). The emphasis on 1-bed over 2-bed condos (3:1 ratio) prioritizes entry-level housing, while the minimal single-family component (100 units) reflects the focus on affordability through density.
+### 3. High-End Market Scenario
+Focuses on luxury segment that dominates new construction:
+- **600 luxury condos**: $700k+ high-rise units
+- **300 premium single-family homes**: $1.5M+ in prime areas
+- **2,500 luxury apartment units**: $400k+ per unit
+- **200 boutique multi-family**: $400k+ per unit in smaller buildings
 
 ```{r scenario_planning}
-# Get average tax rates by property and bedroom type for 2022
-tax_rates <- bedroom_data %>%
-  filter(year == 2022) %>%
-  select(property_type, bedroom_type, avg_tax_per_unit)
-
-# Define scenarios
+# Define scenarios with bedroom types that match our tax rate data
 scenarios <- tribble(
   ~scenario_name, ~property_type, ~bedroom_type, ~units,
-  # Balanced Growth
-  "Balanced Growth", "Condo", "beds_1", 1000,
-  "Balanced Growth", "Condo", "beds_2", 1000,
-  "Balanced Growth", "Single Family", "beds_3plus", 500,
-  "Balanced Growth", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2000,
-  "Balanced Growth", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 1500,
+  # Premium TOD
+  "Premium TOD", "Condo", "beds_3plus", 500,  # Luxury high-rise
+  "Premium TOD", "Condo", "beds_2", 500,      # Mid-rise
+  "Premium TOD", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2500,  # Luxury apartments
+  "Premium TOD", "Single Family", "beds_3plus", 100,  # Premium homes
   
-  # Transit-Oriented Development
-  "TOD", "Condo", "beds_1", 2000,
-  "TOD", "Condo", "beds_2", 1500,
-  "TOD", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 3000,
-  "TOD", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 1000,
-  "TOD", "Single Family", "beds_3plus", 200,
+  # Mixed-Market
+  "Mixed-Market", "Condo", "beds_2", 800,     # Mid-rise
+  "Mixed-Market", "Condo", "beds_3plus", 400,  # Luxury
+  "Mixed-Market", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2500,  # All apartments
+  "Mixed-Market", "Single Family", "beds_3plus", 200,  # Median new construction
   
-  # Affordable Housing Focus
-  "Affordable Housing", "Condo", "beds_1", 1500,
-  "Affordable Housing", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 4000,
-  "Affordable Housing", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 2000,
-  "Affordable Housing", "Condo", "beds_2", 500,
-  "Affordable Housing", "Single Family", "beds_3plus", 100
+  # High-End Market
+  "High-End Market", "Condo", "beds_3plus", 600,  # Luxury high-rise
+  "High-End Market", "Single Family", "beds_3plus", 300,  # Premium
+  "High-End Market", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2500,  # Luxury
+  "High-End Market", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 200  # Boutique
 )
 
-# Calculate revenue for each scenario
+# Calculate revenue using new construction tax rates
 scenario_results <- scenarios %>%
-  left_join(tax_rates, by = c("property_type", "bedroom_type")) %>%
-  mutate(tax_revenue = units * avg_tax_per_unit)
+  left_join(new_construction_rates %>% 
+              select(property_type, bedroom_type, new_construction_tax),
+            by = c("property_type", "bedroom_type")) %>%
+  mutate(tax_revenue = units * new_construction_tax)
 
 # Summarize results
 scenario_summary <- scenario_results %>%
@@ -250,7 +334,7 @@ kable(scenario_summary %>%
   col.names = c("Scenario", "Total Units", "Annual Tax Revenue", "Revenue per Unit"),
   caption = "Projected Annual Tax Revenue by Development Scenario")
 
-# Create improved scenario visualization
+# Create scenario visualization
 scenario_plot <- scenario_results %>%
   group_by(scenario_name, property_type) %>%
   summarize(tax_revenue = sum(tax_revenue), .groups = 'drop') %>%
@@ -284,11 +368,44 @@ scenario_plot <- scenario_results %>%
   )
 
 scenario_plot
+
+# Create unit mix visualization
+unit_mix_plot <- scenario_results %>%
+  ggplot(aes(x = scenario_name, 
+             y = units, 
+             fill = property_type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = format_number(units)),
+            position = position_stack(vjust = 0.5),
+            color = "white",
+            size = 3) +
+  scale_y_continuous(labels = scales::comma_format(),
+                    expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = modern_palette) +
+  labs(
+    title = "Unit Mix by Development Scenario",
+    subtitle = "Number of units by property type",
+    x = "Development Scenario",
+    y = "Number of Units",
+    fill = "Property Type"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 10, color = "gray50"),
+    axis.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    panel.grid.major.x = element_blank()
+  )
+
+unit_mix_plot
 ```
 
 ## Case Study: Lake View Township Development Potential
 
-To better understand the specific impact of new housing development in different areas, let's examine Lake View township as a detailed case study.
+To better understand the specific impact of new housing development in different areas, let's examine Lake View township as a detailed case study, incorporating current market values for new construction.
 
 ```{r lakeview_current}
 # Filter data for Lake View township and calculate effective tax rate
@@ -309,7 +426,7 @@ kable(lakeview_data %>%
   col.names = c("Year", "Township", "Property Type", "Avg Tax/Unit", "Avg Value/Unit", "Effective Tax Rate"),
   caption = "Current Property Tax Metrics in Lake View Township (2022)")
 
-# Calculate township-specific metrics using raw numbers before formatting
+# Calculate township-specific metrics
 lakeview_metrics <- lakeview_data %>%
   summarize(
     avg_tax_all_types = mean(avg_tax_per_unit),
@@ -320,35 +437,37 @@ lakeview_metrics <- lakeview_data %>%
 
 ### Lake View Development Scenarios
 
-Based on Lake View's current property tax patterns and development characteristics, we'll model three targeted scenarios:
+Based on Lake View's premium location and current market values, we'll model three targeted scenarios:
 
 ```{r lakeview_scenarios}
-# Define Lake View specific scenarios
+# Define Lake View specific scenarios with matching bedroom types
 lakeview_scenarios <- tribble(
   ~scenario_name, ~property_type, ~bedroom_type, ~units,
-  # High-Density Transit Corridor
-  "Transit Corridor", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1500,
-  "Transit Corridor", "Condo", "beds_1", 800,
-  "Transit Corridor", "Condo", "beds_2", 500,
-  "Transit Corridor", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 200,
+  # Luxury Transit Corridor
+  "Luxury Transit Corridor", "Condo", "beds_3plus", 400,  # Premium high-rise
+  "Luxury Transit Corridor", "Condo", "beds_2", 300,      # Luxury mid-rise
+  "Luxury Transit Corridor", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1500,  # Luxury apartments
+  "Luxury Transit Corridor", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 200,  # Boutique
   
-  # Mixed-Income Development
-  "Mixed-Income", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1000,
-  "Mixed-Income", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 500,
-  "Mixed-Income", "Condo", "beds_1", 400,
-  "Mixed-Income", "Condo", "beds_2", 300,
+  # Premium Mixed-Use
+  "Premium Mixed-Use", "Condo", "beds_3plus", 300,  # Luxury units
+  "Premium Mixed-Use", "Condo", "beds_2", 200,      # Mid-rise
+  "Premium Mixed-Use", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1000,  # Luxury
+  "Premium Mixed-Use", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 300,  # Boutique
   
-  # Neighborhood Infill
-  "Neighborhood Infill", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 800,
-  "Neighborhood Infill", "Condo", "beds_2", 400,
-  "Neighborhood Infill", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 300,
-  "Neighborhood Infill", "Condo", "beds_1", 200
+  # Boutique Neighborhood
+  "Boutique Neighborhood", "Condo", "beds_3plus", 200,  # Luxury
+  "Boutique Neighborhood", "Condo", "beds_2", 200,      # Mid-rise
+  "Boutique Neighborhood", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 600,  # Boutique
+  "Boutique Neighborhood", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 400   # Smaller luxury buildings
 )
 
-# Calculate revenue for Lake View scenarios
+# Calculate revenue using new construction tax rates
 lakeview_results <- lakeview_scenarios %>%
-  left_join(tax_rates, by = c("property_type", "bedroom_type")) %>%
-  mutate(tax_revenue = units * avg_tax_per_unit)
+  left_join(new_construction_rates %>% 
+              select(property_type, bedroom_type, new_construction_tax),
+            by = c("property_type", "bedroom_type")) %>%
+  mutate(tax_revenue = units * new_construction_tax)
 
 # Summarize Lake View scenario results
 lakeview_summary <- lakeview_results %>%
@@ -404,66 +523,117 @@ lakeview_plot <- lakeview_results %>%
   )
 
 lakeview_plot
+
+# Create Lake View unit mix visualization
+lakeview_unit_mix <- lakeview_results %>%
+  ggplot(aes(x = scenario_name, 
+             y = units, 
+             fill = property_type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = format_number(units)),
+            position = position_stack(vjust = 0.5),
+            color = "white",
+            size = 3) +
+  scale_y_continuous(labels = scales::comma_format(),
+                    expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = modern_palette) +
+  labs(
+    title = "Unit Mix by Development Scenario in Lake View",
+    subtitle = "Number of units by property type",
+    x = "Development Scenario",
+    y = "Number of Units",
+    fill = "Property Type"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 10, color = "gray50"),
+    axis.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    panel.grid.major.x = element_blank()
+  )
+
+lakeview_unit_mix
 ```
 
 ### Lake View Scenario Details
 
-1. **Transit Corridor Development** (3,000 total units)
-   - Focuses on high-density development along major transit routes
-   - Emphasizes larger multi-family buildings (1,500 units) near transit stops
-   - Includes a mix of 1-bed (800 units) and 2-bed (500 units) condos
-   - Limited small multi-family (200 units) as buffer zones
+1. **Luxury Transit Corridor Development** (2,400 total units)
+   - Premium high-rise condos: 400 units at $700k+
+   - Luxury mid-rise condos: 300 units at $575k+
+   - Luxury apartments: 1,500 units at $400k+ per unit
+   - Boutique multi-family: 200 units at $400k+ per unit
    - Projected annual revenue: `r format_currency(lakeview_summary$total_revenue[1])`
 
-2. **Mixed-Income Development** (2,200 total units)
-   - Balanced approach with diverse housing types
-   - Large multi-family component (1,000 units) for affordable options
-   - Mix of small multi-family (500 units) throughout
-   - Even distribution of 1-bed (400 units) and 2-bed (300 units) condos
+2. **Premium Mixed-Use Development** (1,800 total units)
+   - Luxury condos: 300 units at $700k+
+   - Mid-rise condos: 200 units at $575k
+   - Luxury apartments: 1,000 units at $400k+ per unit
+   - Boutique multi-family: 300 units at $400k+ per unit
    - Projected annual revenue: `r format_currency(lakeview_summary$total_revenue[2])`
 
-3. **Neighborhood Infill** (1,700 total units)
-   - Emphasizes smaller-scale development compatible with existing neighborhoods
-   - Focus on small multi-family buildings (800 units)
-   - More 2-bed (400 units) than 1-bed (200 units) condos
-   - Limited large multi-family (300 units) at strategic locations
+3. **Boutique Neighborhood Development** (1,400 total units)
+   - Luxury condos: 200 units at $700k+
+   - Mid-rise condos: 200 units at $575k
+   - Boutique multi-family: 600 units at $400k+ per unit
+   - Smaller luxury buildings: 400 units at $400k+ per unit
    - Projected annual revenue: `r format_currency(lakeview_summary$total_revenue[3])`
 
 ### Lake View Development Insights
 
 1. **Revenue Generation**:
-   - Transit Corridor scenario generates the highest total revenue at `r format_currency(lakeview_summary$total_revenue[1])` annually
-   - Mixed-Income approach provides balanced revenue of `r format_currency(lakeview_summary$total_revenue[2])` annually
-   - Neighborhood Infill generates `r format_currency(lakeview_summary$total_revenue[3])` while maintaining neighborhood character
+   - Luxury Transit Corridor scenario generates the highest total revenue at `r format_currency(lakeview_summary$total_revenue[1])` annually
+   - Premium Mixed-Use approach provides balanced revenue of `r format_currency(lakeview_summary$total_revenue[2])` annually
+   - Boutique Neighborhood generates `r format_currency(lakeview_summary$total_revenue[3])` while maintaining neighborhood character
 
 2. **Unit Mix Considerations**:
-   - Large multi-family developments contribute significantly to total revenue
-   - Condo units provide strong per-unit revenue
-   - Small multi-family buildings offer good revenue while preserving neighborhood scale
+   - Premium large multi-family developments drive significant revenue
+   - Luxury condos provide strong per-unit revenue
+   - Boutique multi-family buildings balance revenue and neighborhood context
 
 3. **Location Strategy**:
-   - Focus high-density development along major transit corridors
-   - Distribute small multi-family units throughout neighborhoods
-   - Strategic placement of larger developments near existing amenities
+   - Focus luxury high-density development along major transit corridors
+   - Distribute boutique developments throughout neighborhoods
+   - Strategic placement of premium developments near existing amenities
 
 4. **Implementation Recommendations**:
    - Phase development starting with transit-adjacent parcels
-   - Coordinate with CTA on transit-oriented development
-   - Implement design guidelines to ensure compatibility with existing buildings
+   - Coordinate with CTA on premium TOD opportunities
+   - Implement design guidelines for high-end development
    - Consider TIF districts for infrastructure improvements
 
 ## Methodology Notes
 
-This analysis uses actual property tax data from Cook County for 2021-2022. Key assumptions include:
+This analysis uses actual property tax data from Cook County for 2021-2022, with adjustments based on current market values for new construction:
 
-- Tax rates remain consistent with 2022 levels
-- New developments achieve similar values to existing properties
-- Unit counts for multi-family properties are estimated based on property values
-- Scenarios represent theoretical development patterns
+**New Construction Values**:
+- Single Family Homes:
+  * Entry-level: $450,000
+  * Median: $700,000
+  * Premium: $1,500,000+
+- Condominiums:
+  * Mid-rise: $525,000
+  * Median: $575,000
+  * Luxury: $700,000+
+- Multi-Family:
+  * Mid-market: $275,000-350,000 per unit
+  * Luxury: $400,000+ per unit
+
+These values are based on:
+- Current market conditions in Chicago
+- Recent new construction sales data
+- Developer pro forma requirements
+- Construction cost analysis
+- Location value assessment
 
 Data sources:
 - Cook County Assessor's Office
 - Property tax bills from 2021-2022
 - Township-level assessment data
+- Market analysis of new construction prices
+- Developer pro forma analysis
+- Construction cost data
 
-Note on Effective Tax Rates: The effective tax rate is calculated as the ratio of total tax to market value. In cases where this calculation initially resulted in NA values (due to missing or zero market values), we've computed it using the average tax per unit divided by average value per unit to ensure completeness of the analysis.
+Note on New Construction Values: The values used reflect actual market conditions and recent sales data for new construction in Chicago, providing a more accurate picture of potential tax revenue from new development.
