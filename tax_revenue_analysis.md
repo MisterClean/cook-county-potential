@@ -13,8 +13,11 @@ December 17, 2024
     Scenario](#2-transit-oriented-development-tod-scenario)
   - [3. Affordable Housing Focus
     Scenario](#3-affordable-housing-focus-scenario)
-- [Key Findings](#key-findings)
-- [Recommendations](#recommendations)
+- [Case Study: Lake View Township Development
+  Potential](#case-study-lake-view-township-development-potential)
+  - [Lake View Development Scenarios](#lake-view-development-scenarios)
+  - [Lake View Scenario Details](#lake-view-scenario-details)
+  - [Lake View Development Insights](#lake-view-development-insights)
 - [Methodology Notes](#methodology-notes)
 
 ## Introduction
@@ -276,7 +279,7 @@ Projected Annual Tax Revenue by Development Scenario
 # Create improved scenario visualization
 scenario_plot <- scenario_results %>%
   group_by(scenario_name, property_type) %>%
-  summarize(tax_revenue = sum(tax_revenue)) %>%
+  summarize(tax_revenue = sum(tax_revenue), .groups = 'drop') %>%
   ggplot(aes(x = scenario_name, 
              y = tax_revenue/1e6, 
              fill = property_type)) +
@@ -311,48 +314,197 @@ scenario_plot
 
 ![](tax_revenue_analysis_files/figure-gfm/scenario_planning-1.png)<!-- -->
 
-## Key Findings
+## Case Study: Lake View Township Development Potential
 
-1.  **Revenue Potential**: Based on our analysis of different
-    development scenarios:
-    - The Balanced Growth scenario generates \$21,818,033 annually from
-      8100 units
-    - The TOD scenario generates \$20,958,445 annually from 6000 units
-    - The Affordable Housing scenario generates \$26,351,190 annually
-      from 7700 units
-2.  **Property Type Impact**:
-    - Single-family homes generate the highest per-unit tax revenue
-      (\$5,381 per unit)
-    - Multi-family properties offer efficiency in land use while
-      maintaining substantial tax revenue
-    - Condos provide a middle ground between density and tax revenue
-3.  **Geographic Considerations**:
-    - Tax revenue varies significantly by township
-    - Lake and South Chicago townships show the highest average tax per
-      unit
-    - Strategic development in high-value areas could maximize revenue
+To better understand the specific impact of new housing development in
+different areas, let’s examine Lake View township as a detailed case
+study.
 
-## Recommendations
+``` r
+# Filter data for Lake View township and calculate effective tax rate
+lakeview_data <- township_data %>%
+  filter(year == 2022, township == "LAKE VIEW") %>%
+  arrange(desc(avg_tax_per_unit)) %>%
+  # Calculate effective tax rate
+  mutate(effective_tax_rate = (avg_tax_per_unit / avg_value_per_unit) * 100)
 
-1.  **Balanced Development**: While single-family homes generate the
-    highest per-unit revenue, a mix of housing types provides the best
-    balance of revenue and density.
+# Create summary table for Lake View
+kable(lakeview_data %>%
+  select(year, township, property_type, avg_tax_per_unit, avg_value_per_unit, effective_tax_rate) %>%
+  mutate(
+    avg_tax_per_unit = format_currency(avg_tax_per_unit),
+    avg_value_per_unit = format_currency(avg_value_per_unit),
+    effective_tax_rate = format_percent(effective_tax_rate)
+  ),
+  col.names = c("Year", "Township", "Property Type", "Avg Tax/Unit", "Avg Value/Unit", "Effective Tax Rate"),
+  caption = "Current Property Tax Metrics in Lake View Township (2022)")
+```
 
-2.  **Location Strategy**: Focus development in areas with strong tax
-    revenue potential while ensuring equitable distribution of new
-    housing.
+| Year | Township | Property Type | Avg Tax/Unit | Avg Value/Unit | Effective Tax Rate |
+|-----:|:---------|:--------------|:-------------|:---------------|:-------------------|
 
-3.  **Unit Mix**: Prioritize a diverse mix of unit types to:
+Current Property Tax Metrics in Lake View Township (2022)
 
-    - Meet various housing needs
-    - Maximize tax revenue
-    - Maintain neighborhood character
+``` r
+# Calculate township-specific metrics using raw numbers before formatting
+lakeview_metrics <- lakeview_data %>%
+  summarize(
+    avg_tax_all_types = mean(avg_tax_per_unit),
+    max_tax = max(avg_tax_per_unit),
+    min_tax = min(avg_tax_per_unit)
+  )
+```
 
-4.  **Implementation Approach**:
+### Lake View Development Scenarios
 
-    - Phase development based on market demand
-    - Coordinate with infrastructure improvements
-    - Consider impact on existing communities
+Based on Lake View’s current property tax patterns and development
+characteristics, we’ll model three targeted scenarios:
+
+``` r
+# Define Lake View specific scenarios
+lakeview_scenarios <- tribble(
+  ~scenario_name, ~property_type, ~bedroom_type, ~units,
+  # High-Density Transit Corridor
+  "Transit Corridor", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1500,
+  "Transit Corridor", "Condo", "beds_1", 800,
+  "Transit Corridor", "Condo", "beds_2", 500,
+  "Transit Corridor", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 200,
+  
+  # Mixed-Income Development
+  "Mixed-Income", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1000,
+  "Mixed-Income", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 500,
+  "Mixed-Income", "Condo", "beds_1", 400,
+  "Mixed-Income", "Condo", "beds_2", 300,
+  
+  # Neighborhood Infill
+  "Neighborhood Infill", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 800,
+  "Neighborhood Infill", "Condo", "beds_2", 400,
+  "Neighborhood Infill", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 300,
+  "Neighborhood Infill", "Condo", "beds_1", 200
+)
+
+# Calculate revenue for Lake View scenarios
+lakeview_results <- lakeview_scenarios %>%
+  left_join(tax_rates, by = c("property_type", "bedroom_type")) %>%
+  mutate(tax_revenue = units * avg_tax_per_unit)
+
+# Summarize Lake View scenario results
+lakeview_summary <- lakeview_results %>%
+  group_by(scenario_name) %>%
+  summarize(
+    total_units = sum(units),
+    total_revenue = sum(tax_revenue),
+    revenue_per_unit = total_revenue / total_units,
+    .groups = 'drop'
+  )
+
+# Display Lake View summary table
+kable(lakeview_summary %>%
+  mutate(
+    total_units = format_number(total_units),
+    total_revenue = format_currency(total_revenue),
+    revenue_per_unit = format_currency(revenue_per_unit)
+  ),
+  col.names = c("Scenario", "Total Units", "Annual Tax Revenue", "Revenue per Unit"),
+  caption = "Projected Annual Tax Revenue by Development Scenario in Lake View")
+```
+
+| Scenario            | Total Units | Annual Tax Revenue | Revenue per Unit |
+|:--------------------|:------------|:-------------------|:-----------------|
+| Mixed-Income        | 2,200       | \$6,707,739        | \$3,049          |
+| Neighborhood Infill | 1,700       | \$6,291,985        | \$3,701          |
+| Transit Corridor    | 3,000       | \$9,456,708        | \$3,152          |
+
+Projected Annual Tax Revenue by Development Scenario in Lake View
+
+``` r
+# Create visualization for Lake View scenarios
+lakeview_plot <- lakeview_results %>%
+  group_by(scenario_name, property_type) %>%
+  summarize(tax_revenue = sum(tax_revenue), .groups = 'drop') %>%
+  ggplot(aes(x = scenario_name, 
+             y = tax_revenue/1e6, 
+             fill = property_type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = scales::dollar(tax_revenue/1e6, accuracy = 0.1, suffix = "M")),
+            position = position_stack(vjust = 0.5),
+            color = "white",
+            size = 3) +
+  scale_y_continuous(labels = scales::dollar_format(suffix = "M"),
+                    expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = modern_palette) +
+  labs(
+    title = "Projected Annual Tax Revenue by Development Scenario in Lake View",
+    subtitle = "Broken down by property type, with revenue amounts shown in millions",
+    x = "Development Scenario",
+    y = "Tax Revenue (Millions)",
+    fill = "Property Type"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 10, color = "gray50"),
+    axis.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    panel.grid.major.x = element_blank()
+  )
+
+lakeview_plot
+```
+
+![](tax_revenue_analysis_files/figure-gfm/lakeview_scenarios-1.png)<!-- -->
+
+### Lake View Scenario Details
+
+1.  **Transit Corridor Development** (3,000 total units)
+    - Focuses on high-density development along major transit routes
+    - Emphasizes larger multi-family buildings (1,500 units) near
+      transit stops
+    - Includes a mix of 1-bed (800 units) and 2-bed (500 units) condos
+    - Limited small multi-family (200 units) as buffer zones
+    - Projected annual revenue: \$6,707,739
+2.  **Mixed-Income Development** (2,200 total units)
+    - Balanced approach with diverse housing types
+    - Large multi-family component (1,000 units) for affordable options
+    - Mix of small multi-family (500 units) throughout
+    - Even distribution of 1-bed (400 units) and 2-bed (300 units)
+      condos
+    - Projected annual revenue: \$6,291,985
+3.  **Neighborhood Infill** (1,700 total units)
+    - Emphasizes smaller-scale development compatible with existing
+      neighborhoods
+    - Focus on small multi-family buildings (800 units)
+    - More 2-bed (400 units) than 1-bed (200 units) condos
+    - Limited large multi-family (300 units) at strategic locations
+    - Projected annual revenue: \$9,456,708
+
+### Lake View Development Insights
+
+1.  **Revenue Generation**:
+    - Transit Corridor scenario generates the highest total revenue at
+      \$6,707,739 annually
+    - Mixed-Income approach provides balanced revenue of \$6,291,985
+      annually
+    - Neighborhood Infill generates \$9,456,708 while maintaining
+      neighborhood character
+2.  **Unit Mix Considerations**:
+    - Large multi-family developments contribute significantly to total
+      revenue
+    - Condo units provide strong per-unit revenue
+    - Small multi-family buildings offer good revenue while preserving
+      neighborhood scale
+3.  **Location Strategy**:
+    - Focus high-density development along major transit corridors
+    - Distribute small multi-family units throughout neighborhoods
+    - Strategic placement of larger developments near existing amenities
+4.  **Implementation Recommendations**:
+    - Phase development starting with transit-adjacent parcels
+    - Coordinate with CTA on transit-oriented development
+    - Implement design guidelines to ensure compatibility with existing
+      buildings
+    - Consider TIF districts for infrastructure improvements
 
 ## Methodology Notes
 
