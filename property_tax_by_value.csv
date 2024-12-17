@@ -1,0 +1,21 @@
+"property_type","value_bracket","count","avg_tax"
+"Condo","Under $250k",586,1964.35470989761
+"Condo","$250k-$500k",257,6917.57377431907
+"Condo","$500k-$750k",78,11749.6341025641
+"Condo","$750k-$1M",26,17214.4930769231
+"Condo","Over $1M",14,40663.8792857143
+"Large Multi-Family (7+ units)","Under $250k",3,3654.20666666667
+"Large Multi-Family (7+ units)","$250k-$500k",7,10671.58
+"Large Multi-Family (7+ units)","$500k-$750k",8,15775.67375
+"Large Multi-Family (7+ units)","$750k-$1M",8,21098.4225
+"Large Multi-Family (7+ units)","Over $1M",13,33811.7438461538
+"Single Family","Under $250k",402,3589.96592039801
+"Single Family","$250k-$500k",186,7648.58220430107
+"Single Family","$500k-$750k",34,11789.21
+"Single Family","$750k-$1M",4,16291.295
+"Single Family","Over $1M",2,23362.255
+"Small Multi-Family (2-6 units)","Under $250k",160,3458.83775
+"Small Multi-Family (2-6 units)","$250k-$500k",123,7782.24674796748
+"Small Multi-Family (2-6 units)","$500k-$750k",53,11033.3360377358
+"Small Multi-Family (2-6 units)","$750k-$1M",21,17180.9119047619
+"Small Multi-Family (2-6 units)","Over $1M",15,24380.9466666667

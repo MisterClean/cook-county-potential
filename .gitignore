@@ -15,3 +15,5 @@ renv/
 renv.lock
 inst/
 rosm.cache/
+.DS_Store
+**/.DS_Store
