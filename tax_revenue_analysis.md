@@ -1,58 +1,53 @@
-Cook County Property Tax Revenue Analysis
+Cook County Property Tax Revenue Analysis - Multi-Unit Focus
 ================
 Cook County Potential
 December 17, 2024
 
 - [Introduction](#introduction)
-- [Current Property Tax Landscape](#current-property-tax-landscape)
-  - [Geographic Distribution](#geographic-distribution)
-  - [Unit Size Analysis](#unit-size-analysis)
-- [New Construction Market Analysis](#new-construction-market-analysis)
-  - [Current Market Values](#current-market-values)
-- [Development Scenarios](#development-scenarios)
-  - [1. Premium Transit-Oriented Development
-    Scenario](#1-premium-transit-oriented-development-scenario)
-  - [2. Mixed-Market Development
-    Scenario](#2-mixed-market-development-scenario)
-  - [3. High-End Market Scenario](#3-high-end-market-scenario)
-- [Case Study: Lake View Township Development
-  Potential](#case-study-lake-view-township-development-potential)
-  - [Lake View Development Scenarios](#lake-view-development-scenarios)
+- [Market Values for Analysis](#market-values-for-analysis)
+- [Citywide Development Scenarios](#citywide-development-scenarios)
+  - [Citywide Scenario Details](#citywide-scenario-details)
+- [Lake View Township Analysis](#lake-view-township-analysis)
   - [Lake View Scenario Details](#lake-view-scenario-details)
-  - [Lake View Development Insights](#lake-view-development-insights)
+- [Key Findings](#key-findings)
 - [Methodology Notes](#methodology-notes)
 
 ## Introduction
 
-This analysis explores the potential property tax revenue that could be
-generated through new housing development in Cook County, with a focus
-on Chicago townships. Using actual property tax data from 2021-2022 and
-current market values for new construction, we model various scenarios
-for housing development and their impact on tax revenue.
+This analysis explores the potential property tax revenue from new
+multi-unit residential development in Cook County, focusing specifically
+on condominiums and multi-family buildings. We examine scenarios both
+citywide and within Lake View Township, using current market values for
+new construction.
 
-## Current Property Tax Landscape
+## Market Values for Analysis
 
-First, let’s examine the current property tax situation across different
-housing types and locations, which will serve as our baseline before
-applying new construction values.
+For this analysis, we use the following new construction values:
+
+**Condominiums**: - Standard new construction: \$575,000 per unit
+
+**Multi-Family Developments**: - Mid-market: \$275,000-350,000 per
+unit - Luxury: \$400,000+ per unit
 
 ``` r
 # Load the data
 summary_data <- read.csv("property_tax_summary.csv")
-bedroom_data <- read.csv("property_tax_by_bedroom.csv")
 township_data <- read.csv("property_tax_by_township.csv")
 new_construction_rates <- read.csv("new_construction_tax_rates.csv")
 
-# Filter for most recent year (2022)
+# Filter for most recent year and multi-unit properties
 current_summary <- summary_data %>%
-  filter(year == 2022) %>%
+  filter(year == 2022,
+         property_type %in% c("Condo", "Large Multi-Family (7+ units)", "Small Multi-Family (2-6 units)")) %>%
   select(property_type, avg_tax_per_unit, avg_value_per_unit, effective_tax_rate) %>%
-  # Handle NA values in effective tax rate
-  mutate(effective_tax_rate = ifelse(is.na(effective_tax_rate), 
-                                    avg_tax_per_unit / avg_value_per_unit * 100,
-                                    effective_tax_rate))
+  mutate(
+    effective_tax_rate = ifelse(is.na(effective_tax_rate), 
+                               avg_tax_per_unit / avg_value_per_unit * 100,
+                               effective_tax_rate),
+    property_type = simplify_property_type(property_type)
+  )
 
-# Create summary table
+# Create summary table with enhanced styling
 kable(current_summary %>%
   mutate(
     avg_tax_per_unit = format_currency(avg_tax_per_unit),
@@ -60,324 +55,862 @@ kable(current_summary %>%
     effective_tax_rate = format_percent(effective_tax_rate)
   ),
   col.names = c("Property Type", "Avg Tax/Unit", "Avg Value/Unit", "Effective Tax Rate"),
-  caption = "2022 Property Tax Summary by Housing Type (Existing Housing Stock)")
+  caption = "2022 Property Tax Summary by Housing Type (Existing Multi-Unit Stock)",
+  align = c("l", "r", "r", "r")
+) %>% style_table()
 ```
 
-| Property Type | Avg Tax/Unit | Avg Value/Unit | Effective Tax Rate |
-|:---|:---|:---|:---|
-| Condo | \$5,121 | \$260,034 | 2.0% |
-| Large Multi-Family (7+ units) | \$2,130 | \$92,849 | 2.3% |
-| Single Family | \$5,381 | \$249,305 | 2.2% |
-| Small Multi-Family (2-6 units) | \$2,669 | \$132,752 | 2.0% |
+<table class="table table-striped table-hover table-condensed table-bordered" style="font-size: 12px; width: auto !important; ">
 
-2022 Property Tax Summary by Housing Type (Existing Housing Stock)
+<caption style="font-size: initial !important;">
 
-### Geographic Distribution
+2022 Property Tax Summary by Housing Type (Existing Multi-Unit Stock)
+</caption>
 
-Let’s examine how property taxes vary across Chicago townships. This
-geographic analysis helps identify areas where new construction could
-generate the highest tax revenue.
+<thead>
 
-``` r
-# Create township visualization with improved styling
-township_plot <- township_data %>%
-  filter(year == 2022) %>%
-  ggplot(aes(x = reorder(township, avg_tax_per_unit), 
-             y = avg_tax_per_unit, 
-             fill = property_type)) +
-  geom_bar(stat = "identity", 
-           position = position_dodge(width = 0.9)) +
-  geom_text(aes(label = scales::dollar(avg_tax_per_unit, accuracy = 1)),
-            position = position_dodge(width = 0.9),
-            hjust = -0.1,
-            size = 3) +
-  coord_flip() +
-  scale_y_continuous(labels = scales::dollar_format(),
-                    expand = expansion(mult = c(0, 0.2))) +
-  scale_fill_manual(values = modern_palette) +
-  labs(
-    title = "Average Property Tax per Unit by Township and Property Type (2022)",
-    subtitle = "Data labels show average tax amount per unit for existing housing stock",
-    x = "Township",
-    y = "Average Tax per Unit",
-    fill = "Property Type"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    plot.subtitle = element_text(size = 10, color = "gray50"),
-    axis.title = element_text(face = "bold"),
-    legend.position = "bottom",
-    legend.box = "horizontal",
-    panel.grid.major.y = element_blank()
-  )
+<tr>
 
-township_plot
-```
+<th style="text-align:left;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
 
-![](tax_revenue_analysis_files/figure-gfm/township_analysis-1.png)<!-- -->
+Property Type
+</th>
 
-### Unit Size Analysis
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
 
-Different unit sizes have varying tax implications. This analysis of
-existing housing stock provides context for our new construction
-scenarios:
+Avg Tax/Unit
+</th>
 
-``` r
-# Create bedroom analysis visualization with improved styling
-bedroom_plot <- bedroom_data %>%
-  filter(year == 2022) %>%
-  ggplot(aes(x = bedroom_type, 
-             y = avg_tax_per_unit, 
-             fill = property_type)) +
-  geom_bar(stat = "identity", 
-           position = position_dodge(width = 0.9)) +
-  geom_text(aes(label = scales::dollar(avg_tax_per_unit, accuracy = 1)),
-            position = position_dodge(width = 0.9),
-            vjust = -0.5,
-            size = 3) +
-  scale_y_continuous(labels = scales::dollar_format(),
-                    expand = expansion(mult = c(0, 0.2))) +
-  scale_fill_manual(values = modern_palette) +
-  labs(
-    title = "Average Property Tax by Unit Size and Property Type (2022)",
-    subtitle = "Data labels show average tax amount per unit for existing housing stock",
-    x = "Unit Type",
-    y = "Average Tax per Unit",
-    fill = "Property Type"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    plot.subtitle = element_text(size = 10, color = "gray50"),
-    axis.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom",
-    legend.box = "horizontal",
-    panel.grid.major.x = element_blank()
-  ) +
-  scale_x_discrete(labels = function(x) {
-    gsub("_", " ", str_to_title(x))
-  })
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
 
-bedroom_plot
-```
+Avg Value/Unit
+</th>
 
-![](tax_revenue_analysis_files/figure-gfm/bedroom_analysis-1.png)<!-- -->
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
 
-## New Construction Market Analysis
+Effective Tax Rate
+</th>
 
-Before presenting development scenarios, let’s analyze how new
-construction values compare to existing housing stock:
+</tr>
 
-``` r
-# Create comparison of existing vs new construction values
-value_comparison <- new_construction_rates %>%
-  select(property_type, bedroom_type, avg_value_per_unit, new_construction_value, 
-         avg_tax_per_unit, new_construction_tax) %>%
-  group_by(property_type) %>%
-  summarize(
-    avg_existing_value = mean(avg_value_per_unit, na.rm = TRUE),
-    avg_new_value = mean(new_construction_value, na.rm = TRUE),
-    avg_existing_tax = mean(avg_tax_per_unit, na.rm = TRUE),
-    avg_new_tax = mean(new_construction_tax, na.rm = TRUE),
-    value_premium = (mean(new_construction_value, na.rm = TRUE) / 
-                    mean(avg_value_per_unit, na.rm = TRUE) - 1) * 100
-  )
+</thead>
 
-# Display value comparison table
-kable(value_comparison %>%
-  mutate(
-    avg_existing_value = format_currency(avg_existing_value),
-    avg_new_value = format_currency(avg_new_value),
-    avg_existing_tax = format_currency(avg_existing_tax),
-    avg_new_tax = format_currency(avg_new_tax),
-    value_premium = format_percent(value_premium/100)
-  ),
-  col.names = c("Property Type", "Existing Value", "New Construction Value", 
-                "Existing Tax", "New Construction Tax", "Value Premium"),
-  caption = "New Construction Value and Tax Premium by Property Type")
-```
+<tbody>
 
-| Property Type | Existing Value | New Construction Value | Existing Tax | New Construction Tax | Value Premium |
-|:---|:---|:---|:---|:---|:---|
-| Condo | \$449,726 | \$600,000 | \$8,947 | \$11,804 | 0.3% |
-| Large Multi-Family (7+ units) | \$92,849 | \$400,000 | \$2,130 | \$9,176 | 3.3% |
-| Single Family | \$249,305 | \$700,000 | \$5,381 | \$15,110 | 1.8% |
-| Small Multi-Family (2-6 units) | \$132,752 | \$400,000 | \$2,669 | \$8,042 | 2.0% |
+<tr>
 
-New Construction Value and Tax Premium by Property Type
+<td style="text-align:left;">
+
+Condo
+</td>
+
+<td style="text-align:right;">
+
+\$5,121
+</td>
+
+<td style="text-align:right;">
+
+\$260,034
+</td>
+
+<td style="text-align:right;">
+
+2.0%
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Large Multi-Family
+</td>
+
+<td style="text-align:right;">
+
+\$2,130
+</td>
+
+<td style="text-align:right;">
+
+\$92,849
+</td>
+
+<td style="text-align:right;">
+
+2.3%
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Small Multi-Family
+</td>
+
+<td style="text-align:right;">
+
+\$2,669
+</td>
+
+<td style="text-align:right;">
+
+\$132,752
+</td>
+
+<td style="text-align:right;">
+
+2.0%
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+## Citywide Development Scenarios
+
+We model three development scenarios that reflect different approaches
+to multi-unit development across Chicago:
 
 ``` r
-# Create visualization of new construction premiums
-premium_plot <- value_comparison %>%
-  ggplot(aes(x = reorder(property_type, value_premium), 
-             y = value_premium,
-             fill = property_type)) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = format_percent(value_premium/100)),
-            vjust = -0.5,
-            size = 3) +
-  scale_y_continuous(labels = scales::percent_format(),
-                    expand = expansion(mult = c(0, 0.2))) +
-  scale_fill_manual(values = modern_palette) +
-  labs(
-    title = "New Construction Value Premium by Property Type",
-    subtitle = "Percentage increase in property value for new construction vs. existing stock",
-    x = "Property Type",
-    y = "Value Premium"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    plot.subtitle = element_text(size = 10, color = "gray50"),
-    axis.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none",
-    panel.grid.major.x = element_blank()
-  )
-
-premium_plot
-```
-
-![](tax_revenue_analysis_files/figure-gfm/new_construction_analysis-1.png)<!-- -->
-
-``` r
-# Create detailed value breakdown by bedroom type
-value_breakdown <- new_construction_rates %>%
-  select(property_type, bedroom_type, avg_value_per_unit, new_construction_value) %>%
-  mutate(
-    bedroom_type = gsub("_", " ", str_to_title(bedroom_type))
-  ) %>%
-  arrange(property_type, bedroom_type)
-
-# Display detailed value breakdown
-kable(value_breakdown %>%
-  mutate(
-    avg_value_per_unit = format_currency(avg_value_per_unit),
-    new_construction_value = format_currency(new_construction_value)
-  ),
-  col.names = c("Property Type", "Unit Size", "Existing Value", "New Construction Value"),
-  caption = "Detailed Value Comparison by Property Type and Unit Size")
-```
-
-| Property Type | Unit Size | Existing Value | New Construction Value |
-|:---|:---|:---|:---|
-| Condo | Beds 1 | \$125,438 | \$525,000 |
-| Condo | Beds 2 | \$386,539 | \$575,000 |
-| Condo | Beds 3plus | \$837,201 | \$700,000 |
-| Large Multi-Family (7+ units) | Mixed studio to 3 | \$92,849 | \$400,000 |
-| Single Family | Beds 3plus | \$249,305 | \$700,000 |
-| Small Multi-Family (2-6 units) | Mixed 1 to 3 | \$132,752 | \$400,000 |
-
-Detailed Value Comparison by Property Type and Unit Size
-
-### Current Market Values
-
-New construction in Chicago commands significant premiums, with values
-varying by location and property type:
-
-**Single Family Homes**: - Entry-level new construction: \$450,000
-(affordable areas) - Median new construction: \$700,000 - Premium
-neighborhoods: \$1,500,000+ (Lincoln Park/Lakeview)
-
-**Condominiums**: - Mid-rise neighborhood developments: \$525,000 -
-Median new construction: \$575,000 - Luxury high-rise units: \$700,000+
-
-**Multi-Family Developments**: - Mid-market developments:
-\$275,000-350,000 per unit - Luxury developments: \$400,000+ per unit -
-Focus on larger (20+ unit) buildings
-
-## Development Scenarios
-
-Based on these market values, we model three development scenarios that
-reflect current construction patterns:
-
-### 1. Premium Transit-Oriented Development Scenario
-
-This scenario focuses on high-end development near transit: - **1,000
-luxury condos**: Mix of high-rise (\$700k+) and mid-rise (\$575k)
-units - **2,500 luxury apartment units**: \$400k+ per unit in
-amenity-rich buildings - **100 premium single-family homes**: \$1.5M+ in
-prime locations
-
-### 2. Mixed-Market Development Scenario
-
-Provides some market diversity while reflecting new construction
-economics: - **800 mid-rise condos**: \$525k neighborhood developments -
-**400 luxury condos**: \$700k+ units - **2,500 luxury apartment units**:
-\$400k+ per unit - **200 median single-family homes**: \$700k new
-construction
-
-### 3. High-End Market Scenario
-
-Focuses on luxury segment that dominates new construction: - **600
-luxury condos**: \$700k+ high-rise units - **300 premium single-family
-homes**: \$1.5M+ in prime areas - **2,500 luxury apartment units**:
-\$400k+ per unit - **200 boutique multi-family**: \$400k+ per unit in
-smaller buildings
-
-``` r
-# Define scenarios with bedroom types that match our tax rate data
-scenarios <- tribble(
-  ~scenario_name, ~property_type, ~bedroom_type, ~units,
-  # Premium TOD
-  "Premium TOD", "Condo", "beds_3plus", 500,  # Luxury high-rise
-  "Premium TOD", "Condo", "beds_2", 500,      # Mid-rise
-  "Premium TOD", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2500,  # Luxury apartments
-  "Premium TOD", "Single Family", "beds_3plus", 100,  # Premium homes
+# Define citywide scenarios
+citywide_scenarios <- tribble(
+  ~scenario_name, ~property_type, ~bedroom_type, ~units, ~value_per_unit,
+  # High-Density Mixed
+  "High-Density Mixed", "Condo", "beds_2", 1000, 575000,  # Standard condos
+  "High-Density Mixed", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2000, 400000,  # Luxury apartments
+  "High-Density Mixed", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1000, 312500,  # Mid-market (avg of 275-350k)
   
-  # Mixed-Market
-  "Mixed-Market", "Condo", "beds_2", 800,     # Mid-rise
-  "Mixed-Market", "Condo", "beds_3plus", 400,  # Luxury
-  "Mixed-Market", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2500,  # All apartments
-  "Mixed-Market", "Single Family", "beds_3plus", 200,  # Median new construction
+  # Luxury-Focused
+  "Luxury-Focused", "Condo", "beds_2", 1500, 575000,  # Standard condos
+  "Luxury-Focused", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2500, 400000,  # Luxury apartments
   
-  # High-End Market
-  "High-End Market", "Condo", "beds_3plus", 600,  # Luxury high-rise
-  "High-End Market", "Single Family", "beds_3plus", 300,  # Premium
-  "High-End Market", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 2500,  # Luxury
-  "High-End Market", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 200  # Boutique
+  # Balanced Development
+  "Balanced Development", "Condo", "beds_2", 800, 575000,  # Standard condos
+  "Balanced Development", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1500, 400000,  # Luxury apartments
+  "Balanced Development", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1500, 312500,  # Mid-market
+  "Balanced Development", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 500, 312500   # Mid-market smaller buildings
 )
 
-# Calculate revenue using new construction tax rates
-scenario_results <- scenarios %>%
-  left_join(new_construction_rates %>% 
-              select(property_type, bedroom_type, new_construction_tax),
-            by = c("property_type", "bedroom_type")) %>%
-  mutate(tax_revenue = units * new_construction_tax)
+# Calculate effective tax rate (using 2% as example)
+effective_tax_rate <- 0.02
 
-# Summarize results
-scenario_summary <- scenario_results %>%
-  group_by(scenario_name) %>%
-  summarize(
-    total_units = sum(units),
-    total_revenue = sum(tax_revenue),
-    revenue_per_unit = total_revenue / total_units
+# Calculate revenue
+citywide_results <- citywide_scenarios %>%
+  mutate(
+    total_value = units * value_per_unit,
+    tax_revenue = total_value * effective_tax_rate,
+    property_type = simplify_property_type(property_type)
   )
 
-# Display summary table
-kable(scenario_summary %>%
-  mutate(
-    total_units = format_number(total_units),
-    total_revenue = format_currency(total_revenue),
-    revenue_per_unit = format_currency(revenue_per_unit)
+# Create detailed summary with subtotals
+citywide_detailed <- bind_rows(
+  # High-Density Mixed details and subtotal
+  citywide_results %>%
+    filter(scenario_name == "High-Density Mixed") %>%
+    mutate(row_type = "detail"),
+  citywide_results %>%
+    filter(scenario_name == "High-Density Mixed") %>%
+    summarize(
+      scenario_name = first(scenario_name),
+      property_type = "SUBTOTAL",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "subtotal"
+    ),
+  
+  # Add spacing row
+  tibble(
+    scenario_name = "",
+    property_type = "",
+    units = NA,
+    total_value = NA,
+    tax_revenue = NA,
+    row_type = "spacing"
   ),
-  col.names = c("Scenario", "Total Units", "Annual Tax Revenue", "Revenue per Unit"),
-  caption = "Projected Annual Tax Revenue by Development Scenario")
+  
+  # Luxury-Focused details and subtotal
+  citywide_results %>%
+    filter(scenario_name == "Luxury-Focused") %>%
+    mutate(row_type = "detail"),
+  citywide_results %>%
+    filter(scenario_name == "Luxury-Focused") %>%
+    summarize(
+      scenario_name = first(scenario_name),
+      property_type = "SUBTOTAL",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "subtotal"
+    ),
+  
+  # Add spacing row
+  tibble(
+    scenario_name = "",
+    property_type = "",
+    units = NA,
+    total_value = NA,
+    tax_revenue = NA,
+    row_type = "spacing"
+  ),
+  
+  # Balanced Development details and subtotal
+  citywide_results %>%
+    filter(scenario_name == "Balanced Development") %>%
+    mutate(row_type = "detail"),
+  citywide_results %>%
+    filter(scenario_name == "Balanced Development") %>%
+    summarize(
+      scenario_name = first(scenario_name),
+      property_type = "SUBTOTAL",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "subtotal"
+    ),
+  
+  # Add spacing row
+  tibble(
+    scenario_name = "",
+    property_type = "",
+    units = NA,
+    total_value = NA,
+    tax_revenue = NA,
+    row_type = "spacing"
+  ),
+  
+  # Grand total
+  citywide_results %>%
+    summarize(
+      scenario_name = "GRAND TOTAL",
+      property_type = "",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "total"
+    )
+) %>%
+  mutate(
+    revenue_per_unit = tax_revenue / units,
+    # Format the display strings
+    units_display = ifelse(is.na(units), "", format_number(units)),
+    value_display = ifelse(is.na(total_value), "", format_currency(total_value)),
+    revenue_display = ifelse(is.na(tax_revenue), "", format_currency(tax_revenue)),
+    revenue_per_unit_display = ifelse(is.na(revenue_per_unit), "", format_currency(revenue_per_unit)),
+    # Create more concise unit mix description
+    unit_mix = case_when(
+      row_type == "detail" ~ sprintf("%s: %s units @ %s",
+                                    property_type,
+                                    format_number(units),
+                                    format_currency(value_per_unit)),
+      row_type == "subtotal" ~ sprintf("Total: %s units", format_number(units)),
+      TRUE ~ ""
+    )
+  )
+
+# Display detailed table with enhanced styling
+kable(
+  citywide_detailed %>%
+    select(scenario_name, unit_mix, units_display, value_display, revenue_display, revenue_per_unit_display) %>%
+    rename(
+      Scenario = scenario_name,
+      `Unit Mix` = unit_mix,
+      Units = units_display,
+      `Development Value` = value_display,
+      `Annual Tax Revenue` = revenue_display,
+      `Revenue per Unit` = revenue_per_unit_display
+    ),
+  caption = "Detailed Development Scenarios - Citywide",
+  align = c("l", "l", "r", "r", "r", "r")
+) %>% style_table()
 ```
 
-| Scenario        | Total Units | Annual Tax Revenue | Revenue per Unit |
-|:----------------|:------------|:-------------------|:-----------------|
-| High-End Market | 3,600       | \$37,345,729       | \$10,374         |
-| Mixed-Market    | 3,900       | \$40,521,965       | \$10,390         |
-| Premium TOD     | 3,600       | \$36,994,354       | \$10,276         |
+<table class="table table-striped table-hover table-condensed table-bordered" style="font-size: 12px; width: auto !important; ">
 
-Projected Annual Tax Revenue by Development Scenario
+<caption style="font-size: initial !important;">
+
+Detailed Development Scenarios - Citywide
+</caption>
+
+<thead>
+
+<tr>
+
+<th style="text-align:left;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Scenario
+</th>
+
+<th style="text-align:left;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Unit Mix
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Units
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Development Value
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Annual Tax Revenue
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Revenue per Unit
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:left;">
+
+High-Density Mixed
+</td>
+
+<td style="text-align:left;">
+
+Condo: 1,000 units @ \$575,000
+</td>
+
+<td style="text-align:right;">
+
+1,000
+</td>
+
+<td style="text-align:right;">
+
+\$575,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,500
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+High-Density Mixed
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 2,000 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+2,000
+</td>
+
+<td style="text-align:right;">
+
+\$800,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$16,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+High-Density Mixed
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 1,000 units @ \$312,500
+</td>
+
+<td style="text-align:right;">
+
+1,000
+</td>
+
+<td style="text-align:right;">
+
+\$312,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$6,250,000
+</td>
+
+<td style="text-align:right;">
+
+\$6,250
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+High-Density Mixed
+</td>
+
+<td style="text-align:left;">
+
+Total: 4,000 units
+</td>
+
+<td style="text-align:right;">
+
+4,000
+</td>
+
+<td style="text-align:right;">
+
+\$1,687,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$33,750,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,438
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Luxury-Focused
+</td>
+
+<td style="text-align:left;">
+
+Condo: 1,500 units @ \$575,000
+</td>
+
+<td style="text-align:right;">
+
+1,500
+</td>
+
+<td style="text-align:right;">
+
+\$862,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$17,250,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,500
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Luxury-Focused
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 2,500 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+2,500
+</td>
+
+<td style="text-align:right;">
+
+\$1,000,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$20,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Luxury-Focused
+</td>
+
+<td style="text-align:left;">
+
+Total: 4,000 units
+</td>
+
+<td style="text-align:right;">
+
+4,000
+</td>
+
+<td style="text-align:right;">
+
+\$1,862,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$37,250,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,312
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Balanced Development
+</td>
+
+<td style="text-align:left;">
+
+Condo: 800 units @ \$575,000
+</td>
+
+<td style="text-align:right;">
+
+800
+</td>
+
+<td style="text-align:right;">
+
+\$460,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,200,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,500
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Balanced Development
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 1,500 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+1,500
+</td>
+
+<td style="text-align:right;">
+
+\$600,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$12,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Balanced Development
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 1,500 units @ \$312,500
+</td>
+
+<td style="text-align:right;">
+
+1,500
+</td>
+
+<td style="text-align:right;">
+
+\$468,750,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,375,000
+</td>
+
+<td style="text-align:right;">
+
+\$6,250
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Balanced Development
+</td>
+
+<td style="text-align:left;">
+
+Small Multi-Family: 500 units @ \$312,500
+</td>
+
+<td style="text-align:right;">
+
+500
+</td>
+
+<td style="text-align:right;">
+
+\$156,250,000
+</td>
+
+<td style="text-align:right;">
+
+\$3,125,000
+</td>
+
+<td style="text-align:right;">
+
+\$6,250
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Balanced Development
+</td>
+
+<td style="text-align:left;">
+
+Total: 4,300 units
+</td>
+
+<td style="text-align:right;">
+
+4,300
+</td>
+
+<td style="text-align:right;">
+
+\$1,685,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$33,700,000
+</td>
+
+<td style="text-align:right;">
+
+\$7,837
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+GRAND TOTAL
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+12,300
+</td>
+
+<td style="text-align:right;">
+
+\$5,235,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$104,700,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,512
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
 
 ``` r
-# Create scenario visualization
-scenario_plot <- scenario_results %>%
+# Create visualization
+citywide_plot <- citywide_results %>%
   group_by(scenario_name, property_type) %>%
   summarize(tax_revenue = sum(tax_revenue), .groups = 'drop') %>%
   ggplot(aes(x = scenario_name, 
@@ -392,7 +925,7 @@ scenario_plot <- scenario_results %>%
                     expand = expansion(mult = c(0, 0.1))) +
   scale_fill_manual(values = modern_palette) +
   labs(
-    title = "Projected Annual Tax Revenue by Development Scenario",
+    title = "Projected Annual Tax Revenue by Development Scenario - Citywide",
     subtitle = "Broken down by property type, with revenue amounts shown in millions",
     x = "Development Scenario",
     y = "Tax Revenue (Millions)",
@@ -409,155 +942,726 @@ scenario_plot <- scenario_results %>%
     panel.grid.major.x = element_blank()
   )
 
-scenario_plot
+citywide_plot
 ```
 
-![](tax_revenue_analysis_files/figure-gfm/scenario_planning-1.png)<!-- -->
+![](tax_revenue_analysis_files/figure-gfm/citywide_scenarios-1.png)<!-- -->
+
+### Citywide Scenario Details
+
+1.  **High-Density Mixed Development** (4,000 total units)
+    - 1,000 standard condos at \$575,000 per unit
+    - 2,000 luxury apartment units at \$400,000+ per unit
+    - 1,000 mid-market apartment units at \$275,000-350,000 per unit
+2.  **Luxury-Focused Development** (4,000 total units)
+    - 1,500 standard condos at \$575,000 per unit
+    - 2,500 luxury apartment units at \$400,000+ per unit
+3.  **Balanced Development** (4,300 total units)
+    - 800 standard condos at \$575,000 per unit
+    - 1,500 luxury apartment units at \$400,000+ per unit
+    - 1,500 mid-market apartment units at \$275,000-350,000 per unit
+    - 500 mid-market units in smaller buildings at \$275,000-350,000 per
+      unit
+
+## Lake View Township Analysis
+
+Now let’s examine specific scenarios for Lake View Township, considering
+its premium location and market dynamics:
 
 ``` r
-# Create unit mix visualization
-unit_mix_plot <- scenario_results %>%
-  ggplot(aes(x = scenario_name, 
-             y = units, 
-             fill = property_type)) +
-  geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = format_number(units)),
-            position = position_stack(vjust = 0.5),
-            color = "white",
-            size = 3) +
-  scale_y_continuous(labels = scales::comma_format(),
-                    expand = expansion(mult = c(0, 0.1))) +
-  scale_fill_manual(values = modern_palette) +
-  labs(
-    title = "Unit Mix by Development Scenario",
-    subtitle = "Number of units by property type",
-    x = "Development Scenario",
-    y = "Number of Units",
-    fill = "Property Type"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    plot.subtitle = element_text(size = 10, color = "gray50"),
-    axis.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom",
-    legend.box = "horizontal",
-    panel.grid.major.x = element_blank()
-  )
-
-unit_mix_plot
-```
-
-![](tax_revenue_analysis_files/figure-gfm/scenario_planning-2.png)<!-- -->
-
-## Case Study: Lake View Township Development Potential
-
-To better understand the specific impact of new housing development in
-different areas, let’s examine Lake View township as a detailed case
-study, incorporating current market values for new construction.
-
-``` r
-# Filter data for Lake View township and calculate effective tax rate
-lakeview_data <- township_data %>%
-  filter(year == 2022, township == "LAKE VIEW") %>%
-  arrange(desc(avg_tax_per_unit)) %>%
-  # Calculate effective tax rate
-  mutate(effective_tax_rate = (avg_tax_per_unit / avg_value_per_unit) * 100)
-
-# Create summary table for Lake View
-kable(lakeview_data %>%
-  select(year, township, property_type, avg_tax_per_unit, avg_value_per_unit, effective_tax_rate) %>%
-  mutate(
-    avg_tax_per_unit = format_currency(avg_tax_per_unit),
-    avg_value_per_unit = format_currency(avg_value_per_unit),
-    effective_tax_rate = format_percent(effective_tax_rate)
-  ),
-  col.names = c("Year", "Township", "Property Type", "Avg Tax/Unit", "Avg Value/Unit", "Effective Tax Rate"),
-  caption = "Current Property Tax Metrics in Lake View Township (2022)")
-```
-
-| Year | Township | Property Type | Avg Tax/Unit | Avg Value/Unit | Effective Tax Rate |
-|-----:|:---------|:--------------|:-------------|:---------------|:-------------------|
-
-Current Property Tax Metrics in Lake View Township (2022)
-
-``` r
-# Calculate township-specific metrics
-lakeview_metrics <- lakeview_data %>%
-  summarize(
-    avg_tax_all_types = mean(avg_tax_per_unit),
-    max_tax = max(avg_tax_per_unit),
-    min_tax = min(avg_tax_per_unit)
-  )
-```
-
-### Lake View Development Scenarios
-
-Based on Lake View’s premium location and current market values, we’ll
-model three targeted scenarios:
-
-``` r
-# Define Lake View specific scenarios with matching bedroom types
+# Define Lake View specific scenarios
 lakeview_scenarios <- tribble(
-  ~scenario_name, ~property_type, ~bedroom_type, ~units,
-  # Luxury Transit Corridor
-  "Luxury Transit Corridor", "Condo", "beds_3plus", 400,  # Premium high-rise
-  "Luxury Transit Corridor", "Condo", "beds_2", 300,      # Luxury mid-rise
-  "Luxury Transit Corridor", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1500,  # Luxury apartments
-  "Luxury Transit Corridor", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 200,  # Boutique
+  ~scenario_name, ~property_type, ~bedroom_type, ~units, ~value_per_unit,
+  # Transit-Oriented
+  "Transit-Oriented", "Condo", "beds_2", 500, 575000,  # Standard condos
+  "Transit-Oriented", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1000, 400000,  # Luxury apartments
   
-  # Premium Mixed-Use
-  "Premium Mixed-Use", "Condo", "beds_3plus", 300,  # Luxury units
-  "Premium Mixed-Use", "Condo", "beds_2", 200,      # Mid-rise
-  "Premium Mixed-Use", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 1000,  # Luxury
-  "Premium Mixed-Use", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 300,  # Boutique
+  # Mixed-Density
+  "Mixed-Density", "Condo", "beds_2", 400, 575000,  # Standard condos
+  "Mixed-Density", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 600, 400000,  # Luxury apartments
+  "Mixed-Density", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 200, 400000,  # Luxury smaller buildings
   
-  # Boutique Neighborhood
-  "Boutique Neighborhood", "Condo", "beds_3plus", 200,  # Luxury
-  "Boutique Neighborhood", "Condo", "beds_2", 200,      # Mid-rise
-  "Boutique Neighborhood", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 600,  # Boutique
-  "Boutique Neighborhood", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 400   # Smaller luxury buildings
+  # Neighborhood-Scale
+  "Neighborhood-Scale", "Condo", "beds_2", 300, 575000,  # Standard condos
+  "Neighborhood-Scale", "Large Multi-Family (7+ units)", "mixed_studio_to_3", 400, 400000,  # Luxury apartments
+  "Neighborhood-Scale", "Small Multi-Family (2-6 units)", "mixed_1_to_3", 300, 400000   # Luxury smaller buildings
 )
 
-# Calculate revenue using new construction tax rates
+# Calculate revenue for Lake View
 lakeview_results <- lakeview_scenarios %>%
-  left_join(new_construction_rates %>% 
-              select(property_type, bedroom_type, new_construction_tax),
-            by = c("property_type", "bedroom_type")) %>%
-  mutate(tax_revenue = units * new_construction_tax)
-
-# Summarize Lake View scenario results
-lakeview_summary <- lakeview_results %>%
-  group_by(scenario_name) %>%
-  summarize(
-    total_units = sum(units),
-    total_revenue = sum(tax_revenue),
-    revenue_per_unit = total_revenue / total_units,
-    .groups = 'drop'
+  mutate(
+    total_value = units * value_per_unit,
+    tax_revenue = total_value * effective_tax_rate,
+    property_type = simplify_property_type(property_type)
   )
 
-# Display Lake View summary table
-kable(lakeview_summary %>%
-  mutate(
-    total_units = format_number(total_units),
-    total_revenue = format_currency(total_revenue),
-    revenue_per_unit = format_currency(revenue_per_unit)
+# Create detailed summary with subtotals
+lakeview_detailed <- bind_rows(
+  # Transit-Oriented details and subtotal
+  lakeview_results %>%
+    filter(scenario_name == "Transit-Oriented") %>%
+    mutate(row_type = "detail"),
+  lakeview_results %>%
+    filter(scenario_name == "Transit-Oriented") %>%
+    summarize(
+      scenario_name = first(scenario_name),
+      property_type = "SUBTOTAL",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "subtotal"
+    ),
+  
+  # Add spacing row
+  tibble(
+    scenario_name = "",
+    property_type = "",
+    units = NA,
+    total_value = NA,
+    tax_revenue = NA,
+    row_type = "spacing"
   ),
-  col.names = c("Scenario", "Total Units", "Annual Tax Revenue", "Revenue per Unit"),
-  caption = "Projected Annual Tax Revenue by Development Scenario in Lake View")
+  
+  # Mixed-Density details and subtotal
+  lakeview_results %>%
+    filter(scenario_name == "Mixed-Density") %>%
+    mutate(row_type = "detail"),
+  lakeview_results %>%
+    filter(scenario_name == "Mixed-Density") %>%
+    summarize(
+      scenario_name = first(scenario_name),
+      property_type = "SUBTOTAL",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "subtotal"
+    ),
+  
+  # Add spacing row
+  tibble(
+    scenario_name = "",
+    property_type = "",
+    units = NA,
+    total_value = NA,
+    tax_revenue = NA,
+    row_type = "spacing"
+  ),
+  
+  # Neighborhood-Scale details and subtotal
+  lakeview_results %>%
+    filter(scenario_name == "Neighborhood-Scale") %>%
+    mutate(row_type = "detail"),
+  lakeview_results %>%
+    filter(scenario_name == "Neighborhood-Scale") %>%
+    summarize(
+      scenario_name = first(scenario_name),
+      property_type = "SUBTOTAL",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "subtotal"
+    ),
+  
+  # Add spacing row
+  tibble(
+    scenario_name = "",
+    property_type = "",
+    units = NA,
+    total_value = NA,
+    tax_revenue = NA,
+    row_type = "spacing"
+  ),
+  
+  # Grand total
+  lakeview_results %>%
+    summarize(
+      scenario_name = "GRAND TOTAL",
+      property_type = "",
+      units = sum(units),
+      total_value = sum(total_value),
+      tax_revenue = sum(tax_revenue),
+      row_type = "total"
+    )
+) %>%
+  mutate(
+    revenue_per_unit = tax_revenue / units,
+    # Format the display strings
+    units_display = ifelse(is.na(units), "", format_number(units)),
+    value_display = ifelse(is.na(total_value), "", format_currency(total_value)),
+    revenue_display = ifelse(is.na(tax_revenue), "", format_currency(tax_revenue)),
+    revenue_per_unit_display = ifelse(is.na(revenue_per_unit), "", format_currency(revenue_per_unit)),
+    # Create more concise unit mix description
+    unit_mix = case_when(
+      row_type == "detail" ~ sprintf("%s: %s units @ %s",
+                                    property_type,
+                                    format_number(units),
+                                    format_currency(value_per_unit)),
+      row_type == "subtotal" ~ sprintf("Total: %s units", format_number(units)),
+      TRUE ~ ""
+    )
+  )
+
+# Display detailed table with enhanced styling
+kable(
+  lakeview_detailed %>%
+    select(scenario_name, unit_mix, units_display, value_display, revenue_display, revenue_per_unit_display) %>%
+    rename(
+      Scenario = scenario_name,
+      `Unit Mix` = unit_mix,
+      Units = units_display,
+      `Development Value` = value_display,
+      `Annual Tax Revenue` = revenue_display,
+      `Revenue per Unit` = revenue_per_unit_display
+    ),
+  caption = "Detailed Development Scenarios - Lake View Township",
+  align = c("l", "l", "r", "r", "r", "r")
+) %>% style_table()
 ```
 
-| Scenario                | Total Units | Annual Tax Revenue | Revenue per Unit |
-|:------------------------|:------------|:-------------------|:-----------------|
-| Boutique Neighborhood   | 1,400       | \$13,512,939       | \$9,652          |
-| Luxury Transit Corridor | 2,400       | \$24,275,683       | \$10,115         |
-| Premium Mixed-Use       | 1,800       | \$17,983,258       | \$9,991          |
+<table class="table table-striped table-hover table-condensed table-bordered" style="font-size: 12px; width: auto !important; ">
 
-Projected Annual Tax Revenue by Development Scenario in Lake View
+<caption style="font-size: initial !important;">
+
+Detailed Development Scenarios - Lake View Township
+</caption>
+
+<thead>
+
+<tr>
+
+<th style="text-align:left;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Scenario
+</th>
+
+<th style="text-align:left;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Unit Mix
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Units
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Development Value
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Annual Tax Revenue
+</th>
+
+<th style="text-align:right;font-weight: bold;color: white !important;background-color: rgba(46, 134, 171, 255) !important;">
+
+Revenue per Unit
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:left;">
+
+Transit-Oriented
+</td>
+
+<td style="text-align:left;">
+
+Condo: 500 units @ \$575,000
+</td>
+
+<td style="text-align:right;">
+
+500
+</td>
+
+<td style="text-align:right;">
+
+\$287,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$5,750,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,500
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Transit-Oriented
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 1,000 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+1,000
+</td>
+
+<td style="text-align:right;">
+
+\$400,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Transit-Oriented
+</td>
+
+<td style="text-align:left;">
+
+Total: 1,500 units
+</td>
+
+<td style="text-align:right;">
+
+1,500
+</td>
+
+<td style="text-align:right;">
+
+\$687,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$13,750,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,167
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Mixed-Density
+</td>
+
+<td style="text-align:left;">
+
+Condo: 400 units @ \$575,000
+</td>
+
+<td style="text-align:right;">
+
+400
+</td>
+
+<td style="text-align:right;">
+
+\$230,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$4,600,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,500
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Mixed-Density
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 600 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+600
+</td>
+
+<td style="text-align:right;">
+
+\$240,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$4,800,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Mixed-Density
+</td>
+
+<td style="text-align:left;">
+
+Small Multi-Family: 200 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+200
+</td>
+
+<td style="text-align:right;">
+
+\$80,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$1,600,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Mixed-Density
+</td>
+
+<td style="text-align:left;">
+
+Total: 1,200 units
+</td>
+
+<td style="text-align:right;">
+
+1,200
+</td>
+
+<td style="text-align:right;">
+
+\$550,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,167
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Neighborhood-Scale
+</td>
+
+<td style="text-align:left;">
+
+Condo: 300 units @ \$575,000
+</td>
+
+<td style="text-align:right;">
+
+300
+</td>
+
+<td style="text-align:right;">
+
+\$172,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$3,450,000
+</td>
+
+<td style="text-align:right;">
+
+\$11,500
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Neighborhood-Scale
+</td>
+
+<td style="text-align:left;">
+
+Large Multi-Family: 400 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+400
+</td>
+
+<td style="text-align:right;">
+
+\$160,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$3,200,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Neighborhood-Scale
+</td>
+
+<td style="text-align:left;">
+
+Small Multi-Family: 300 units @ \$400,000
+</td>
+
+<td style="text-align:right;">
+
+300
+</td>
+
+<td style="text-align:right;">
+
+\$120,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$2,400,000
+</td>
+
+<td style="text-align:right;">
+
+\$8,000
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Neighborhood-Scale
+</td>
+
+<td style="text-align:left;">
+
+Total: 1,000 units
+</td>
+
+<td style="text-align:right;">
+
+1,000
+</td>
+
+<td style="text-align:right;">
+
+\$452,500,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,050,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,050
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+<td style="text-align:right;">
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+GRAND TOTAL
+</td>
+
+<td style="text-align:left;">
+
+</td>
+
+<td style="text-align:right;">
+
+3,700
+</td>
+
+<td style="text-align:right;">
+
+\$1,690,000,000
+</td>
+
+<td style="text-align:right;">
+
+\$33,800,000
+</td>
+
+<td style="text-align:right;">
+
+\$9,135
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
 
 ``` r
-# Create visualization for Lake View scenarios
+# Create Lake View visualization
 lakeview_plot <- lakeview_results %>%
   group_by(scenario_name, property_type) %>%
   summarize(tax_revenue = sum(tax_revenue), .groups = 'drop') %>%
@@ -573,7 +1677,7 @@ lakeview_plot <- lakeview_results %>%
                     expand = expansion(mult = c(0, 0.1))) +
   scale_fill_manual(values = modern_palette) +
   labs(
-    title = "Projected Annual Tax Revenue by Development Scenario in Lake View",
+    title = "Projected Annual Tax Revenue by Development Scenario - Lake View Township",
     subtitle = "Broken down by property type, with revenue amounts shown in millions",
     x = "Development Scenario",
     y = "Tax Revenue (Millions)",
@@ -595,112 +1699,47 @@ lakeview_plot
 
 ![](tax_revenue_analysis_files/figure-gfm/lakeview_scenarios-1.png)<!-- -->
 
-``` r
-# Create Lake View unit mix visualization
-lakeview_unit_mix <- lakeview_results %>%
-  ggplot(aes(x = scenario_name, 
-             y = units, 
-             fill = property_type)) +
-  geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = format_number(units)),
-            position = position_stack(vjust = 0.5),
-            color = "white",
-            size = 3) +
-  scale_y_continuous(labels = scales::comma_format(),
-                    expand = expansion(mult = c(0, 0.1))) +
-  scale_fill_manual(values = modern_palette) +
-  labs(
-    title = "Unit Mix by Development Scenario in Lake View",
-    subtitle = "Number of units by property type",
-    x = "Development Scenario",
-    y = "Number of Units",
-    fill = "Property Type"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    plot.subtitle = element_text(size = 10, color = "gray50"),
-    axis.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom",
-    legend.box = "horizontal",
-    panel.grid.major.x = element_blank()
-  )
-
-lakeview_unit_mix
-```
-
-![](tax_revenue_analysis_files/figure-gfm/lakeview_scenarios-2.png)<!-- -->
-
 ### Lake View Scenario Details
 
-1.  **Luxury Transit Corridor Development** (2,400 total units)
-    - Premium high-rise condos: 400 units at \$700k+
-    - Luxury mid-rise condos: 300 units at \$575k+
-    - Luxury apartments: 1,500 units at \$400k+ per unit
-    - Boutique multi-family: 200 units at \$400k+ per unit
-    - Projected annual revenue: \$13,512,939
-2.  **Premium Mixed-Use Development** (1,800 total units)
-    - Luxury condos: 300 units at \$700k+
-    - Mid-rise condos: 200 units at \$575k
-    - Luxury apartments: 1,000 units at \$400k+ per unit
-    - Boutique multi-family: 300 units at \$400k+ per unit
-    - Projected annual revenue: \$24,275,683
-3.  **Boutique Neighborhood Development** (1,400 total units)
-    - Luxury condos: 200 units at \$700k+
-    - Mid-rise condos: 200 units at \$575k
-    - Boutique multi-family: 600 units at \$400k+ per unit
-    - Smaller luxury buildings: 400 units at \$400k+ per unit
-    - Projected annual revenue: \$17,983,258
+1.  **Transit-Oriented Development** (1,500 total units)
+    - 500 standard condos at \$575,000 per unit
+    - 1,000 luxury apartment units at \$400,000+ per unit
+2.  **Mixed-Density Development** (1,200 total units)
+    - 400 standard condos at \$575,000 per unit
+    - 600 luxury apartment units at \$400,000+ per unit
+    - 200 luxury units in smaller buildings at \$400,000+ per unit
+3.  **Neighborhood-Scale Development** (1,000 total units)
+    - 300 standard condos at \$575,000 per unit
+    - 400 luxury apartment units at \$400,000+ per unit
+    - 300 luxury units in smaller buildings at \$400,000+ per unit
 
-### Lake View Development Insights
+## Key Findings
 
-1.  **Revenue Generation**:
-    - Luxury Transit Corridor scenario generates the highest total
-      revenue at \$13,512,939 annually
-    - Premium Mixed-Use approach provides balanced revenue of
-      \$24,275,683 annually
-    - Boutique Neighborhood generates \$17,983,258 while maintaining
-      neighborhood character
-2.  **Unit Mix Considerations**:
-    - Premium large multi-family developments drive significant revenue
-    - Luxury condos provide strong per-unit revenue
-    - Boutique multi-family buildings balance revenue and neighborhood
-      context
-3.  **Location Strategy**:
-    - Focus luxury high-density development along major transit
-      corridors
-    - Distribute boutique developments throughout neighborhoods
-    - Strategic placement of premium developments near existing
-      amenities
-4.  **Implementation Recommendations**:
-    - Phase development starting with transit-adjacent parcels
-    - Coordinate with CTA on premium TOD opportunities
-    - Implement design guidelines for high-end development
-    - Consider TIF districts for infrastructure improvements
+1.  **Citywide Development Impact**:
+    - The Luxury-Focused scenario generates the highest total revenue at
+      \$37,250,000 annually
+    - Balanced Development provides diverse housing options while
+      maintaining strong revenue
+    - High-Density Mixed development offers the most varied price points
+2.  **Lake View Township Impact**:
+    - Transit-Oriented Development generates the highest revenue at
+      \$13,750,000 annually
+    - Mixed-Density approach balances revenue with neighborhood context
+    - Neighborhood-Scale development maintains character while still
+      generating significant revenue
+3.  **Revenue Generation Insights**:
+    - Luxury multi-family developments consistently drive strong revenue
+    - Standard condos at \$575,000 provide stable revenue per unit
+    - Smaller multi-family buildings can complement larger developments
 
 ## Methodology Notes
 
-This analysis uses actual property tax data from Cook County for
-2021-2022, with adjustments based on current market values for new
-construction:
-
-**New Construction Values**: - Single Family Homes: \* Entry-level:
-\$450,000 \* Median: \$700,000 \* Premium: \$1,500,000+ - Condominiums:
-\* Mid-rise: \$525,000 \* Median: \$575,000 \* Luxury: \$700,000+ -
-Multi-Family: \* Mid-market: \$275,000-350,000 per unit \* Luxury:
-\$400,000+ per unit
-
-These values are based on: - Current market conditions in Chicago -
-Recent new construction sales data - Developer pro forma requirements -
-Construction cost analysis - Location value assessment
+This analysis uses: - Standard condo value of \$575,000 for new
+construction - Mid-market multi-family values of \$275,000-350,000 per
+unit - Luxury multi-family values of \$400,000+ per unit - Effective tax
+rate based on current Cook County rates - Actual property tax data from
+2021-2022 for baseline comparisons
 
 Data sources: - Cook County Assessor’s Office - Property tax bills from
 2021-2022 - Township-level assessment data - Market analysis of new
-construction prices - Developer pro forma analysis - Construction cost
-data
-
-Note on New Construction Values: The values used reflect actual market
-conditions and recent sales data for new construction in Chicago,
-providing a more accurate picture of potential tax revenue from new
-development.
+construction prices - Developer pro forma analysis
